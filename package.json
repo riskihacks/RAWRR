@@ -1,0 +1,15 @@
+{
+  "name": "fivem-wa-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot for FiveM Server Player Tracking",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.21",
+    "axios": "^1.16.0",
+    "pino": "^8.21.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
