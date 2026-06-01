@@ -389,7 +389,7 @@ async function connectToWhatsApp() {
 
                 const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
 
-                let responseText = `🌐 *WLMC DI SELURUH SERVER FIVEM* 🏍️\n`;
+                let responseText = `🌐 *${keyword.toUpperCase()} DI SELURUH SERVER FIVEM* 🏍️\n`;
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
                 // Ringkasan per server di atas
