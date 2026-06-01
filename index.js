@@ -274,8 +274,9 @@ async function connectToWhatsApp() {
         const from = msg.key.remoteJid;
         if (msg.key.fromMe || from === 'status@broadcast') return;
         const type = Object.keys(msg.message).find(key => key !== 'senderKeyDistributionMessage' && key !== 'messageContextInfo') || '';
-        const content = type === 'conversation' ? msg.message.conversation : type === 'extendedTextMessage' ? msg.message.extendedTextMessage.text : type === 'imageMessage' ? msg.message.imageMessage.caption : '';
-        const command = content.trim().toUpperCase();
+        const content = type === 'conversation' ? msg.message.conversation : type === 'extendedTextMessage' ? msg.message.extendedTextMessage.text : type === 'imageMessage' ? (msg.message.imageMessage.caption || '') : '';
+        if (!content && type !== 'imageMessage') return; // skip pesan non-teks
+        const command = (content || '').trim().toUpperCase();
 
         console.log(`[DEBUG] Pesan masuk dari ${from}: ${content}`);
         console.log(`[DEBUG] Command: ${command}`);
