@@ -361,7 +361,7 @@ async function connectToWhatsApp() {
 
                 const allPlayers = res.data?.data || [];
                 const now = Math.floor(Date.now() / 1000);
-                const ONLINE_THRESHOLD = 600; // 10 menit = online
+                const ONLINE_THRESHOLD = 1800; // 30 menit threshold (fivestats update ~12 menit sekali)
 
                 // Filter: nama mengandung keyword DAN sedang online (last_seen < 10 menit)
                 const filtered = allPlayers.filter(p =>
@@ -378,7 +378,8 @@ async function connectToWhatsApp() {
                 filtered.forEach(p => {
                     const key = p.last_server_endpoint;
                     if (!serverMap[key]) serverMap[key] = { name: p.last_server_name, players: [] };
-                    serverMap[key].players.push(p.clean_name);
+                    const minsAgo = Math.floor((now - p.last_seen) / 60);
+                    serverMap[key].players.push(`${p.clean_name} _(${minsAgo}m lalu)_`);
                 });
 
                 const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
@@ -402,7 +403,7 @@ async function connectToWhatsApp() {
                 }
 
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-                responseText += `_Data realtime fivestats.io_`;
+                responseText += `_⚠️ Data diupdate fivestats.io setiap ~12 menit_`;
 
                 await sock.sendMessage(from, { text: responseText }, { quoted: msg });
             } catch (err) {
