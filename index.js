@@ -20,8 +20,10 @@ const qrcode = require("qrcode-terminal");
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
 // Konfigurasi FiveM
-const SERVER_ID = '237yxy';
-const API_URL = `https://servers-frontend.fivem.net/api/servers/single/${SERVER_ID}`;
+const FIVEM_HOST = 'kota.indopride.id';
+const FIVEM_PORT = 30120;
+const PLAYERS_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/players.json`;
+const DYNAMIC_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/dynamic.json`;
 const TRACKER_FILE = './tracker.json';
 const OWNER_NUMBER = '6285831640918@s.whatsapp.net';
 
@@ -50,18 +52,18 @@ function saveTracker(data) {
 
 async function fetchServerData() {
     try {
-        const response = await axios.get(API_URL, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
-                'Cache-Control': 'no-cache',
-                'Origin': 'https://servers.fivem.net',
-                'Referer': 'https://servers.fivem.net/'
+        const [playersRes, dynamicRes] = await Promise.all([
+            axios.get(PLAYERS_URL, { timeout: 10000 }),
+            axios.get(DYNAMIC_URL, { timeout: 10000 })
+        ]);
+        // Bungkus dalam format yang sama seperti API lama: { Data: { players, clients } }
+        return {
+            Data: {
+                players: playersRes.data || [],
+                clients: dynamicRes.data?.clients || playersRes.data?.length || 0,
+                hostname: dynamicRes.data?.hostname || ''
             }
-        });
-        return response.data;
+        };
     } catch (err) {
         console.error('[FiveM] Error fetching data:', err.message);
         return null;
