@@ -348,30 +348,21 @@ async function connectToWhatsApp() {
 
         // Fitur #ALL [keyword] - Cari player di semua server FiveM
         if (command.startsWith('#ALL')) {
-            const keyword = content.replace(/#all/gi, '').trim().toUpperCase();
+            const keyword = content.replace(/#all/gi, '').trim();
             if (!keyword) return sock.sendMessage(from, { text: 'ℹ️ Format: *#all [nama]*\nContoh: *#all wlmc*' }, { quoted: msg });
 
             await sock.sendMessage(from, { text: `🔍 Mencari *${keyword}* di semua server FiveM...` }, { quoted: msg });
 
             try {
-                let allPlayers = [];
-                let page = 1;
-                let hasMore = true;
+                const res = await axios.get(`https://fivestats.io/api/players?search=${encodeURIComponent(keyword)}&limit=200`, {
+                    timeout: 15000,
+                    headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120', 'Referer': 'https://fivestats.io/players' }
+                });
 
-                // Ambil max 3 halaman (150 hasil) agar tidak terlalu lama
-                while (hasMore && page <= 3) {
-                    const res = await axios.get(`https://fivestats.io/api/players?name=${encodeURIComponent(keyword)}&page=${page}`, {
-                        timeout: 10000,
-                        headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120', 'Referer': 'https://fivestats.io/' }
-                    });
-                    const results = res.data?.data || [];
-                    allPlayers = allPlayers.concat(results);
-                    hasMore = res.data?.meta?.hasMore || false;
-                    page++;
-                }
+                const allPlayers = res.data?.data || [];
 
                 // Filter yang namanya benar-benar mengandung keyword
-                const filtered = allPlayers.filter(p => p.clean_name.toUpperCase().includes(keyword));
+                const filtered = allPlayers.filter(p => p.clean_name.toUpperCase().includes(keyword.toUpperCase()));
 
                 if (filtered.length === 0) {
                     return sock.sendMessage(from, { text: `❌ Tidak ada player dengan nama *${keyword}* yang online di server manapun.` }, { quoted: msg });
@@ -389,23 +380,22 @@ async function connectToWhatsApp() {
 
                 const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
 
-                let responseText = `🌐 *PENCARIAN "${keyword}" DI SEMUA SERVER*\n`;
+                let responseText = `🌐 *PENCARIAN "${keyword.toUpperCase()}" DI SEMUA SERVER*\n`;
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
                 responseText += `✅ *Ditemukan ${filtered.length} player di ${servers.length} server:*\n\n`;
 
-                servers.forEach((srv, i) => {
-                    // Potong nama server yang terlalu panjang
+                servers.slice(0, 10).forEach((srv) => {
                     const srvName = srv.name.length > 40 ? srv.name.substring(0, 40) + '...' : srv.name;
                     responseText += `🏠 *${srvName}* (${srv.players.length} orang)\n`;
                     srv.players.forEach(p => {
                         responseText += `  └ ${p.clean_name}\n`;
                     });
                     responseText += `\n`;
-                    if (i >= 9) { // Max 10 server
-                        responseText += `_...dan ${servers.length - 10} server lainnya_\n`;
-                        return;
-                    }
                 });
+
+                if (servers.length > 10) {
+                    responseText += `_...dan ${servers.length - 10} server lainnya_\n\n`;
+                }
 
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
                 responseText += `_Data realtime dari fivestats.io_`;
