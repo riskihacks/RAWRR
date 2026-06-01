@@ -59,10 +59,20 @@ async function fetchServerData() {
             axios.get(FIVESTATS_SERVER_URL, { timeout: 10000, headers }),
             axios.get(FIVESTATS_PLAYERS_URL, { timeout: 10000, headers })
         ]);
+
+        // Deduplicate player berdasarkan ID (fivestats kadang return duplikat)
+        const rawPlayers = playersRes.data || [];
+        const seen = new Set();
+        const uniquePlayers = rawPlayers.filter(p => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+        });
+
         return {
             Data: {
-                players: playersRes.data || [],
-                clients: serverRes.data?.clients || playersRes.data?.length || 0,
+                players: uniquePlayers,
+                clients: serverRes.data?.clients || uniquePlayers.length || 0,
                 hostname: serverRes.data?.hostname || ''
             }
         };
