@@ -16,6 +16,7 @@ const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const fs = require("fs");
 const axios = require("axios");
+const puppeteer = require("puppeteer");
 const qrcode = require("qrcode-terminal");
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
@@ -24,6 +25,7 @@ const FIVEM_HOST = 'kota.indopride.id';
 const FIVEM_PORT = 30120;
 const PLAYERS_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/players.json`;
 const DYNAMIC_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/dynamic.json`;
+const FIVEM_API_URL = `https://servers-frontend.fivem.net/api/servers/single/237yxy`;
 const TRACKER_FILE = './tracker.json';
 const OWNER_NUMBER = '6285831640918@s.whatsapp.net';
 
@@ -51,12 +53,12 @@ function saveTracker(data) {
 }
 
 async function fetchServerData() {
+    // Coba dulu via direct endpoint (cepat)
     try {
         const [playersRes, dynamicRes] = await Promise.all([
-            axios.get(PLAYERS_URL, { timeout: 10000 }),
-            axios.get(DYNAMIC_URL, { timeout: 10000 })
+            axios.get(PLAYERS_URL, { timeout: 8000 }),
+            axios.get(DYNAMIC_URL, { timeout: 8000 })
         ]);
-        // Bungkus dalam format yang sama seperti API lama: { Data: { players, clients } }
         return {
             Data: {
                 players: playersRes.data || [],
@@ -64,8 +66,44 @@ async function fetchServerData() {
                 hostname: dynamicRes.data?.hostname || ''
             }
         };
+    } catch (directErr) {
+        console.log('[FiveM] Direct endpoint gagal, coba via puppeteer...');
+    }
+
+    // Fallback: puppeteer bypass Cloudflare
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        });
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        // Intercept response JSON langsung
+        let jsonData = null;
+        page.on('response', async (response) => {
+            if (response.url().includes('/api/servers/single/')) {
+                try { jsonData = await response.json(); } catch {}
+            }
+        });
+
+        await page.goto(FIVEM_API_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        // Kalau tidak dapat dari intercept, ambil dari body
+        if (!jsonData) {
+            const bodyText = await page.evaluate(() => document.body.innerText);
+            try { jsonData = JSON.parse(bodyText); } catch {}
+        }
+
+        await browser.close();
+
+        if (jsonData && jsonData.Data) return jsonData;
+        console.error('[FiveM] Puppeteer: data tidak valid');
+        return null;
     } catch (err) {
-        console.error('[FiveM] Error fetching data:', err.message);
+        if (browser) await browser.close().catch(() => {});
+        console.error('[FiveM] Puppeteer error:', err.message);
         return null;
     }
 }
