@@ -16,7 +16,6 @@ const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const fs = require("fs");
 const axios = require("axios");
-const { gotScraping } = require("got-scraping");
 const qrcode = require("qrcode-terminal");
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
@@ -50,46 +49,22 @@ function saveTracker(data) {
 }
 
 async function fetchServerData() {
-    // Coba pakai got-scraping (Chrome TLS fingerprint bypass)
     try {
-        const response = await gotScraping({
-            url: API_URL,
+        const response = await axios.get(API_URL, {
+            timeout: 10000,
             headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
                 'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
                 'Origin': 'https://servers.fivem.net',
-                'Pragma': 'no-cache',
-                'Referer': 'https://servers.fivem.net/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site',
-            },
-            timeout: { request: 15000 },
-            responseType: 'json',
+                'Referer': 'https://servers.fivem.net/'
+            }
         });
-        if (response.statusCode !== 200) {
-            console.error('[FiveM] got-scraping status:', response.statusCode);
-            return null;
-        }
-        return response.body;
-    } catch (error) {
-        // Fallback ke axios biasa jika got-scraping gagal
-        try {
-            const fallback = await axios.get(API_URL, {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                    'Referer': 'https://servers.fivem.net/'
-                }
-            });
-            return fallback.data;
-        } catch (err) {
-            console.error('[FiveM] Error fetching data:', err.message);
-            return null;
-        }
+        return response.data;
+    } catch (err) {
+        console.error('[FiveM] Error fetching data:', err.message);
+        return null;
     }
 }
 
