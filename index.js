@@ -135,29 +135,34 @@ async function connectToWhatsApp() {
             }
 
             if (tracker.dailyGroups.length > 0) {
-                let message = `\u{1F31F} *SYSTEM STATUS: ONLINE* \u{1F31F}\n`;
+                let message = `🏍️ *WLMC BOT - SYSTEM ONLINE* 🏍️\n`;
                 message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-                message += `\u{1F680} *MAIN COMMANDS:*\n`;
-                message += `\u{1F4DD} #WLMC / #WL - List online WLMC\n`;
-                message += `\u{1F50D} #SEARCH [Nama] - Cari player\n`;
-                message += `\u{1F4CB} #LISTALL - Statistik faksi\n`;
-                message += `\u{1F517} #HEX [Link] - Konversi Hex Steam\n`;
-                message += `\u{1F194} #KANTONG [ID] - Cari nama by ID\n\n`;
-                message += `\u{1F48E} *INFO & SOCIAL:*\n`;
-                message += `\u{1F4B0} #DONATUR - List top donatur\n`;
-                message += `\u{1F920} #WLMCINFO - Info grup & discord\n`;
-                message += `\u{1F4CA} #SERVERINFO - Status server\n`;
-                message += `\u{1F30A} #BADAI - Aktifkan daily restart kota\n`;
-                message += `\u{1F4F6} #TOPPING - Cek ping player\n\n`;
-                message += `\u{1F6E0} *TOOLS & FUN:*\n`;
-                message += `\u{1F5BC} #STICKER - Buat stiker dari foto\n`;
-                message += `\u{231B} #PING - Cek respon bot\n`;
-                message += `\u{1F552} #TIME - Waktu saat ini\n`;
-                message += `\u{1F3B2} #RANDOMID - Pick random player\n`;
-                message += `\u{1F464} #OWNER - Kontak owner bot\n\n`;
+                message += `🎮 *INDOPRIDE COMMANDS:*\n`;
+                message += `🟢 #WLMC / #WL — List WLMC online di Indopride\n`;
+                message += `🌐 #ALL [nama] — Cari player di semua server\n`;
+                message += `🔍 #SEARCH [nama] — Cari player di Indopride\n`;
+                message += `📊 #LISTALL — Statistik semua faksi\n`;
+                message += `🆔 #KANTONG [ID] — Cari nama by ID\n`;
+                message += `📡 #TOPPING — Cek ping player\n`;
+                message += `🎲 #RANDOMID — Pick random player\n`;
+                message += `📈 #SERVERINFO — Status server\n\n`;
+                message += `🛠️ *TOOLS:*\n`;
+                message += `🔗 #HEX [link] — Konversi Steam ke Hex\n`;
+                message += `🖼️ #STICKER — Buat stiker dari foto\n`;
+                message += `⏱️ #PING — Cek respon bot\n`;
+                message += `🕐 #TIME — Waktu saat ini\n\n`;
+                message += `💰 *INFO WLMC:*\n`;
+                message += `💎 #DONATUR — List top donatur\n`;
+                message += `📋 #WLMCINFO — Info grup & discord\n`;
+                message += `🌊 #BADAI — Notif daily restart kota\n\n`;
+                message += `🛡️ *ANTI-TOXIC:*\n`;
+                message += `🔒 #ANTITOXIC — Aktifkan/nonaktifkan filter\n`;
+                message += `📝 #LISTBADWORD — Lihat daftar kata toxic\n`;
+                message += `➕ #ADDBADWORD [kata] — Tambah kata toxic\n`;
+                message += `➖ #REMOVEBADWORD [kata] — Hapus kata toxic\n\n`;
                 message += `━━━━━━━━━━━━━━━━━━━━\n`;
-                message += `\u{231A} *Update otomatis setiap ${intervalText}*\n`;
-                message += `_WLMC GACORRRRRRRRRRRRRRRRRRRR_`;
+                message += `⏰ *Update otomatis setiap ${intervalText}*\n`;
+                message += `_WLMC GACORRRRRRRRRRRRRRRRRRRR_ 🔥`;
 
                 for (const jid of tracker.dailyGroups) {
                     try {
@@ -384,26 +389,33 @@ async function connectToWhatsApp() {
 
                 const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
 
-                let responseText = `🌐 *PENCARIAN "${keyword.toUpperCase()}" - SEMUA SERVER*\n`;
-                responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-                responseText += `🟢 *${filtered.length} player online di ${servers.length} server*\n\n`;
+                let responseText = `🌐 *WLMC DI SELURUH SERVER FIVEM* 🏍️\n`;
+                responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+                // Ringkasan per server di atas
+                responseText += `� *RINGKASAN:*\n`;
+                servers.slice(0, 10).forEach((srv) => {
+                    const srvShort = srv.name.length > 30 ? srv.name.substring(0, 30) + '...' : srv.name;
+                    responseText += `🟢 ${srvShort} = *${srv.players.length} online*\n`;
+                });
+                if (servers.length > 10) responseText += `➕ ...dan ${servers.length - 10} server lainnya\n`;
+
+                responseText += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+                responseText += `👥 *DETAIL PER SERVER:*\n\n`;
 
                 servers.slice(0, 10).forEach((srv, i) => {
                     const srvName = srv.name.length > 35 ? srv.name.substring(0, 35) + '...' : srv.name;
-                    responseText += `${i + 1}. 🏠 *${srvName}*\n`;
-                    responseText += `   👥 ${srv.players.length} orang online\n`;
+                    responseText += `${i + 1}️⃣ 🏠 *${srvName}*\n`;
+                    responseText += `   👥 *${srv.players.length} orang online*\n`;
                     srv.players.forEach(name => {
-                        responseText += `   └ ${name}\n`;
+                        responseText += `   🏍️ ${name}\n`;
                     });
                     responseText += `\n`;
                 });
 
-                if (servers.length > 10) {
-                    responseText += `_...dan ${servers.length - 10} server lainnya_\n\n`;
-                }
-
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-                responseText += `_⚠️ Data diupdate fivestats.io setiap ~12 menit_`;
+                responseText += `🟢 *Total: ${filtered.length} player* di *${servers.length} server*\n`;
+                responseText += `_WLMC GACORRRRRRRRRRRRRRRRRRRR_ 🔥`;
 
                 await sock.sendMessage(from, { text: responseText }, { quoted: msg });
             } catch (err) {
