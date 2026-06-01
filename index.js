@@ -360,35 +360,39 @@ async function connectToWhatsApp() {
                 });
 
                 const allPlayers = res.data?.data || [];
+                const now = Math.floor(Date.now() / 1000);
+                const ONLINE_THRESHOLD = 600; // 10 menit = online
 
-                // Filter yang namanya benar-benar mengandung keyword
-                const filtered = allPlayers.filter(p => p.clean_name.toUpperCase().includes(keyword.toUpperCase()));
+                // Filter: nama mengandung keyword DAN sedang online (last_seen < 10 menit)
+                const filtered = allPlayers.filter(p =>
+                    p.clean_name.toUpperCase().includes(keyword.toUpperCase()) &&
+                    (now - p.last_seen) <= ONLINE_THRESHOLD
+                );
 
                 if (filtered.length === 0) {
-                    return sock.sendMessage(from, { text: `❌ Tidak ada player dengan nama *${keyword}* yang online di server manapun.` }, { quoted: msg });
+                    return sock.sendMessage(from, { text: `❌ Tidak ada player *${keyword}* yang sedang online di server manapun saat ini.` }, { quoted: msg });
                 }
 
                 // Group by server
                 const serverMap = {};
                 filtered.forEach(p => {
                     const key = p.last_server_endpoint;
-                    if (!serverMap[key]) {
-                        serverMap[key] = { name: p.last_server_name, players: [] };
-                    }
-                    serverMap[key].players.push(p);
+                    if (!serverMap[key]) serverMap[key] = { name: p.last_server_name, players: [] };
+                    serverMap[key].players.push(p.clean_name);
                 });
 
                 const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
 
-                let responseText = `🌐 *PENCARIAN "${keyword.toUpperCase()}" DI SEMUA SERVER*\n`;
-                responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-                responseText += `✅ *Ditemukan ${filtered.length} player di ${servers.length} server:*\n\n`;
+                let responseText = `🌐 *PENCARIAN "${keyword.toUpperCase()}" - SEMUA SERVER*\n`;
+                responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
+                responseText += `🟢 *${filtered.length} player online di ${servers.length} server*\n\n`;
 
-                servers.slice(0, 10).forEach((srv) => {
-                    const srvName = srv.name.length > 40 ? srv.name.substring(0, 40) + '...' : srv.name;
-                    responseText += `🏠 *${srvName}* (${srv.players.length} orang)\n`;
-                    srv.players.forEach(p => {
-                        responseText += `  └ ${p.clean_name}\n`;
+                servers.slice(0, 10).forEach((srv, i) => {
+                    const srvName = srv.name.length > 35 ? srv.name.substring(0, 35) + '...' : srv.name;
+                    responseText += `${i + 1}. 🏠 *${srvName}*\n`;
+                    responseText += `   👥 ${srv.players.length} orang online\n`;
+                    srv.players.forEach(name => {
+                        responseText += `   └ ${name}\n`;
                     });
                     responseText += `\n`;
                 });
@@ -398,7 +402,7 @@ async function connectToWhatsApp() {
                 }
 
                 responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-                responseText += `_Data realtime dari fivestats.io_`;
+                responseText += `_Data realtime fivestats.io_`;
 
                 await sock.sendMessage(from, { text: responseText }, { quoted: msg });
             } catch (err) {
