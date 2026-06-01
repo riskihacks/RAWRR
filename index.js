@@ -288,7 +288,8 @@ async function connectToWhatsApp() {
             const antiToxicGroups = tracker.antiToxicGroups || [];
             if (antiToxicGroups.includes(from)) {
                 const lowerContent = content.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const foundToxic = TOXIC_WORDS.find(word => {
+                const allBadWords = [...TOXIC_WORDS, ...(tracker.customBadWords || [])];
+                const foundToxic = allBadWords.find(word => {
                     const cleanWord = word.replace(/[^a-z0-9]/g, '');
                     return lowerContent.includes(cleanWord);
                 });
@@ -343,6 +344,137 @@ async function connectToWhatsApp() {
             responseText += `_WLMC GACORRRRRRRRRRRRRRRRRRRR_`;
 
             await sock.sendMessage(from, { text: responseText }, { quoted: msg });
+        }
+
+        // Fitur #ALL [keyword] - Cari player di semua server FiveM
+        if (command.startsWith('#ALL')) {
+            const keyword = content.replace(/#all/gi, '').trim().toUpperCase();
+            if (!keyword) return sock.sendMessage(from, { text: 'ℹ️ Format: *#all [nama]*\nContoh: *#all wlmc*' }, { quoted: msg });
+
+            await sock.sendMessage(from, { text: `🔍 Mencari *${keyword}* di semua server FiveM...` }, { quoted: msg });
+
+            try {
+                let allPlayers = [];
+                let page = 1;
+                let hasMore = true;
+
+                // Ambil max 3 halaman (150 hasil) agar tidak terlalu lama
+                while (hasMore && page <= 3) {
+                    const res = await axios.get(`https://fivestats.io/api/players?name=${encodeURIComponent(keyword)}&page=${page}`, {
+                        timeout: 10000,
+                        headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120', 'Referer': 'https://fivestats.io/' }
+                    });
+                    const results = res.data?.data || [];
+                    allPlayers = allPlayers.concat(results);
+                    hasMore = res.data?.meta?.hasMore || false;
+                    page++;
+                }
+
+                // Filter yang namanya benar-benar mengandung keyword
+                const filtered = allPlayers.filter(p => p.clean_name.toUpperCase().includes(keyword));
+
+                if (filtered.length === 0) {
+                    return sock.sendMessage(from, { text: `❌ Tidak ada player dengan nama *${keyword}* yang online di server manapun.` }, { quoted: msg });
+                }
+
+                // Group by server
+                const serverMap = {};
+                filtered.forEach(p => {
+                    const key = p.last_server_endpoint;
+                    if (!serverMap[key]) {
+                        serverMap[key] = { name: p.last_server_name, players: [] };
+                    }
+                    serverMap[key].players.push(p);
+                });
+
+                const servers = Object.values(serverMap).sort((a, b) => b.players.length - a.players.length);
+
+                let responseText = `🌐 *PENCARIAN "${keyword}" DI SEMUA SERVER*\n`;
+                responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+                responseText += `✅ *Ditemukan ${filtered.length} player di ${servers.length} server:*\n\n`;
+
+                servers.forEach((srv, i) => {
+                    // Potong nama server yang terlalu panjang
+                    const srvName = srv.name.length > 40 ? srv.name.substring(0, 40) + '...' : srv.name;
+                    responseText += `🏠 *${srvName}* (${srv.players.length} orang)\n`;
+                    srv.players.forEach(p => {
+                        responseText += `  └ ${p.clean_name}\n`;
+                    });
+                    responseText += `\n`;
+                    if (i >= 9) { // Max 10 server
+                        responseText += `_...dan ${servers.length - 10} server lainnya_\n`;
+                        return;
+                    }
+                });
+
+                responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
+                responseText += `_Data realtime dari fivestats.io_`;
+
+                await sock.sendMessage(from, { text: responseText }, { quoted: msg });
+            } catch (err) {
+                console.error('[#ALL] Error:', err.message);
+                await sock.sendMessage(from, { text: '❌ Gagal mengambil data. Coba lagi.' }, { quoted: msg });
+            }
+        }
+
+        // Fitur #LISTBADWORD - Tampilkan daftar kata toxic
+        if (command === '#LISTBADWORD') {
+            const tracker = getTracker();
+            const customWords = tracker.customBadWords || [];
+            const allWords = [...TOXIC_WORDS, ...customWords];
+
+            let responseText = `🚫 *DAFTAR KATA TOXIC*\n`;
+            responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            responseText += `📋 *Default (${TOXIC_WORDS.length} kata):*\n`;
+            responseText += TOXIC_WORDS.join(', ') + '\n\n';
+
+            if (customWords.length > 0) {
+                responseText += `➕ *Custom tambahan (${customWords.length} kata):*\n`;
+                responseText += customWords.join(', ') + '\n\n';
+            }
+
+            responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
+            responseText += `📝 *Total: ${allWords.length} kata*\n`;
+            responseText += `_Gunakan #addbadword [kata] untuk tambah_\n`;
+            responseText += `_Gunakan #removebadword [kata] untuk hapus_`;
+
+            await sock.sendMessage(from, { text: responseText }, { quoted: msg });
+        }
+
+        // Fitur #ADDBADWORD - Tambah kata toxic custom
+        if (command.startsWith('#ADDBADWORD')) {
+            const newWord = content.replace(/#addbadword/gi, '').trim().toLowerCase();
+            if (!newWord) return sock.sendMessage(from, { text: 'ℹ️ Format: *#addbadword [kata]*\nContoh: *#addbadword katakasarnya*' }, { quoted: msg });
+
+            const tracker = getTracker();
+            if (!tracker.customBadWords) tracker.customBadWords = [];
+
+            if (TOXIC_WORDS.includes(newWord) || tracker.customBadWords.includes(newWord)) {
+                return sock.sendMessage(from, { text: `⚠️ Kata *"${newWord}"* sudah ada di daftar.` }, { quoted: msg });
+            }
+
+            tracker.customBadWords.push(newWord);
+            saveTracker(tracker);
+            await sock.sendMessage(from, { text: `✅ Kata *"${newWord}"* berhasil ditambahkan ke daftar toxic.` }, { quoted: msg });
+        }
+
+        // Fitur #REMOVEBADWORD - Hapus kata toxic custom
+        if (command.startsWith('#REMOVEBADWORD')) {
+            const removeWord = content.replace(/#removebadword/gi, '').trim().toLowerCase();
+            if (!removeWord) return sock.sendMessage(from, { text: 'ℹ️ Format: *#removebadword [kata]*\nContoh: *#removebadword katakasarnya*' }, { quoted: msg });
+
+            if (TOXIC_WORDS.includes(removeWord)) {
+                return sock.sendMessage(from, { text: `⚠️ Kata *"${removeWord}"* adalah kata default dan tidak bisa dihapus.` }, { quoted: msg });
+            }
+
+            const tracker = getTracker();
+            if (!tracker.customBadWords || !tracker.customBadWords.includes(removeWord)) {
+                return sock.sendMessage(from, { text: `❌ Kata *"${removeWord}"* tidak ditemukan di daftar custom.` }, { quoted: msg });
+            }
+
+            tracker.customBadWords = tracker.customBadWords.filter(w => w !== removeWord);
+            saveTracker(tracker);
+            await sock.sendMessage(from, { text: `✅ Kata *"${removeWord}"* berhasil dihapus dari daftar toxic.` }, { quoted: msg });
         }
 
         // Fitur #SEARCH
