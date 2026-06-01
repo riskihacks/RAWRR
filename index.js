@@ -25,7 +25,7 @@ const FIVEM_HOST = 'kota.indopride.id';
 const FIVEM_PORT = 30120;
 const PLAYERS_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/players.json`;
 const DYNAMIC_URL = `http://${FIVEM_HOST}:${FIVEM_PORT}/dynamic.json`;
-const FIVEM_API_URL = `https://servers-frontend.fivem.net/api/servers/single/237yxy`;
+const FIVEM_API_URL = `https://servers-frontend.fivem.net/api/servers/single/23yxy`;
 const TRACKER_FILE = './tracker.json';
 const OWNER_NUMBER = '6285831640918@s.whatsapp.net';
 
