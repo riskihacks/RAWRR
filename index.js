@@ -837,48 +837,50 @@ async function connectToWhatsApp() {
             await sock.sendMessage(from, { text: `\u{26A1} *Server Connection Speed:*\nLatency API: *${data ? 'Normal' : 'Slow'}*` }, { quoted: msg });
         }
 
-        // Fitur #BADAI - Toggle notifikasi daily restart server
+        // Fitur #BADAI - Toggle notifikasi daily restart server (semua bisa)
         if (command === '#BADAI') {
-            if (msg.key.participant !== OWNER_NUMBER && msg.key.remoteJid !== OWNER_NUMBER) {
-                return sock.sendMessage(from, { text: `\u{274C} Hanya owner yang bisa menggunakan command ini.` }, { quoted: msg });
-            }
             let tracker = getTracker();
             if (!tracker.restartGroups) tracker.restartGroups = [];
             if (tracker.restartGroups.includes(from)) {
                 tracker.restartGroups = tracker.restartGroups.filter(id => id !== from);
                 saveTracker(tracker);
-                await sock.sendMessage(from, { text: `\u{274C} *Daily Restart Notif dinonaktifkan untuk grup ini.*\nBot tidak akan lagi mengirim notifikasi daily restart jam 06:00 & 18:00.` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `❌ *Daily Restart Notif dinonaktifkan untuk grup ini.*\nBot tidak akan lagi mengirim notifikasi daily restart jam 06:00 & 18:00.` }, { quoted: msg });
             } else {
                 tracker.restartGroups.push(from);
                 saveTracker(tracker);
-                await sock.sendMessage(from, { text: `\u{2705} *Daily Restart Notif berhasil diaktifkan!*\nBot akan otomatis mengirim pesan di grup ini setiap jam *06:00 Pagi* dan *18:00 Sore* saat server kota restart.` }, { quoted: msg });
+                await sock.sendMessage(from, { text: `✅ *Daily Restart Notif berhasil diaktifkan!*\nBot akan otomatis mengirim pesan di grup ini setiap jam *06:00 Pagi* dan *18:00 Sore* saat server kota restart.` }, { quoted: msg });
             }
         }
 
         // Fitur #MENU
         if (command === '#MENU') {
-            let menuText = `\u{1F4CB} *COMMAND MENU*\n`;
+            let menuText = `🏍️ *WLMC BOT - COMMAND MENU* 🏍️\n`;
             menuText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-            menuText += `\u{1F680} *MAIN COMMANDS:*\n`;
-            menuText += `\u{1F4DD} #WLMC / #WL - List online WLMC\n`;
-            menuText += `\u{1F50D} #SEARCH [Nama] - Cari player\n`;
-            menuText += `\u{1F4CB} #LISTALL - Statistik faksi\n`;
-            menuText += `\u{1F517} #HEX [Link] - Konversi Hex Steam\n`;
-            menuText += `\u{1F194} #KANTONG [ID] - Cari nama by ID\n\n`;
-            menuText += `\u{1F48E} *INFO & SOCIAL:*\n`;
-            menuText += `\u{1F4B0} #DONATUR - List top donatur\n`;
-            menuText += `\u{1F920} #WLMCINFO - Info grup & discord\n`;
-            menuText += `\u{1F4CA} #SERVERINFO - Status server\n`;
-            menuText += `\u{1F30A} #BADAI - Aktifkan daily restart kota\n`;
-            menuText += `\u{1F4F6} #TOPPING - Cek ping player\n\n`;
-            menuText += `\u{1F6E0} *TOOLS & FUN:*\n`;
-            menuText += `\u{1F5BC} #STICKER - Buat stiker dari foto\n`;
-            menuText += `\u{231B} #PING - Cek respon bot\n`;
-            menuText += `\u{1F552} #TIME - Waktu saat ini\n`;
-            menuText += `\u{1F3B2} #RANDOMID - Pick random player\n`;
-            menuText += `\u{1F464} #OWNER - Kontak owner bot\n\n`;
+            menuText += `🎮 *INDOPRIDE COMMANDS:*\n`;
+            menuText += `🟢 #WLMC / #WL — List WLMC online di Indopride\n`;
+            menuText += `🌐 #ALL [nama] — Cari player di semua server\n`;
+            menuText += `🔍 #SEARCH [nama] — Cari player di Indopride\n`;
+            menuText += `📊 #LISTALL — Statistik semua faksi\n`;
+            menuText += `🆔 #KANTONG [ID] — Cari nama by ID\n`;
+            menuText += `📡 #TOPPING — Cek ping player\n`;
+            menuText += `🎲 #RANDOMID — Pick random player\n`;
+            menuText += `📈 #SERVERINFO — Status server\n\n`;
+            menuText += `🛠️ *TOOLS:*\n`;
+            menuText += `🔗 #HEX [link] — Konversi Steam ke Hex\n`;
+            menuText += `🖼️ #STICKER — Buat stiker dari foto\n`;
+            menuText += `⏱️ #PING — Cek respon bot\n`;
+            menuText += `🕐 #TIME — Waktu saat ini\n\n`;
+            menuText += `💰 *INFO WLMC:*\n`;
+            menuText += `💎 #DONATUR — List top donatur\n`;
+            menuText += `📋 #WLMCINFO — Info grup & discord\n`;
+            menuText += `🌊 #BADAI — Aktifkan/nonaktifkan notif restart kota\n\n`;
+            menuText += `🛡️ *ANTI-TOXIC:*\n`;
+            menuText += `🔒 #ANTITOXIC — Aktifkan/nonaktifkan filter kata kasar\n`;
+            menuText += `📝 #LISTBADWORD — Lihat daftar kata toxic\n`;
+            menuText += `➕ #ADDBADWORD [kata] — Tambah kata toxic\n`;
+            menuText += `➖ #REMOVEBADWORD [kata] — Hapus kata toxic custom\n\n`;
             menuText += `━━━━━━━━━━━━━━━━━━━━\n`;
-            menuText += `_Bot by James/Riski_`;
+            menuText += `_Bot by James/Riski_ 🔥`;
 
             await sock.sendMessage(from, { text: menuText }, { quoted: msg });
         }
