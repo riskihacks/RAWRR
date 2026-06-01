@@ -377,12 +377,8 @@ async function connectToWhatsApp() {
             }
         }
 
-        // Fitur #ANTITOXIC - Toggle anti-toxic filter (Owner Only)
+        // Fitur #ANTITOXIC - Toggle anti-toxic filter (Semua bisa aktifkan)
         if (command === '#ANTITOXIC') {
-            const senderJid = msg.key.participant || from;
-            if (senderJid !== OWNER_NUMBER && from !== OWNER_NUMBER) {
-                return sock.sendMessage(from, { text: `\u{274C} Hanya owner yang bisa menggunakan command ini.` }, { quoted: msg });
-            }
             let tracker = getTracker();
             if (!tracker.antiToxicGroups) tracker.antiToxicGroups = [];
             if (tracker.antiToxicGroups.includes(from)) {
