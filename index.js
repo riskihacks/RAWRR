@@ -60,6 +60,18 @@ function saveTracker(data) {
     fs.writeFileSync(TRACKER_FILE, JSON.stringify(data, null, 2));
 }
 
+// Format angka ke singkatan: 5000 -> 5K, 500000 -> 500K, 1500000 -> 1.5M
+function formatRupiah(amount) {
+    if (amount >= 1000000) {
+        const val = amount / 1000000;
+        return (val % 1 === 0 ? val : val.toFixed(1)) + 'M';
+    } else if (amount >= 1000) {
+        const val = amount / 1000;
+        return (val % 1 === 0 ? val : val.toFixed(1)) + 'K';
+    }
+    return amount.toString();
+}
+
 async function fetchServerData() {
     try {
         const headers = {
@@ -660,50 +672,104 @@ async function connectToWhatsApp() {
 
         // Fitur #DONATUR
         if (command === '#DONATUR') {
-            let responseText = `\u{1F48E} *TOP DONATUR WLMC* \u{1F48E}\n`;
+            const tracker = getTracker();
+            const donaturList = tracker.donatur || [];
+
+            if (donaturList.length === 0) {
+                return sock.sendMessage(from, { text: '📋 Belum ada data donatur.' }, { quoted: msg });
+            }
+
+            // Sort by total tertinggi
+            const sorted = [...donaturList].sort((a, b) => b.total - a.total);
+
+            let responseText = `💎 *TOP DONATUR WLMC* 💎\n`;
             responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-            responseText += `Juanda — 500K \u{1F451}\n`;
-            responseText += `Vaya — 300K\n`;
-            responseText += `Leno / Margo — 300K\n`;
-            responseText += `Khen — 205K\n`;
-            responseText += `Cillo — 200K\n`;
-            responseText += `Pace Wahyu (Org Batam) — 190K\n`;
-            responseText += `Tobi Fajar — 150K\n`;
-            responseText += `RISKI / Bryan — 125K\n`;
-            responseText += `Pingu — 115K\n`;
-            responseText += `Morgan — 100K\n`;
-            responseText += `Lily — 100K\n`;
-            responseText += `Alex Malpinos — 100K\n`;
-            responseText += `Ayu — 100K\n`;
-            responseText += `Man Skuy — 100K\n`;
-            responseText += `Peter — 100K\n`;
-            responseText += `Olavv — 70K\n`;
-            responseText += `Dimas a.k.a Elon — 62K\n`;
-            responseText += `Soka — 50K\n`;
-            responseText += `Mas Gebret — 50K\n`;
-            responseText += `Lek Mat — 50K\n`;
-            responseText += `Vicenzo — 50K\n`;
-            responseText += `Restyooo — 50K\n`;
-            responseText += `Alexsandro — 50K\n`;
-            responseText += `Cobar XTeam — 50K\n`;
-            responseText += `Rahardjj King (Riko) — 50K\n`;
-            responseText += `Cokil — 50K\n`;
-            responseText += `Bam Bang — 50K\n`;
-            responseText += `Budi — 50K\n`;
-            responseText += `Gustavo — 50K\n`;
-            responseText += `Kyle Brown — 40K\n`;
-            responseText += `Pragos Artam — 30K\n`;
-            responseText += `Riza — 30K\n`;
-            responseText += `Hazzerdarin — 25K\n`;
-            responseText += `Jesse Mayer — 25K\n`;
-            responseText += `Mbuud — 20K\n\n`;
+
+            sorted.forEach((d, i) => {
+                const medal = i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                responseText += `${medal} ${d.nama} — *${formatRupiah(d.total)}*\n`;
+            });
+
+            const totalAll = donaturList.reduce((sum, d) => sum + d.total, 0);
+            responseText += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+            responseText += `💰 *Total Terkumpul: ${formatRupiah(totalAll)}*\n`;
+            responseText += `👥 *${donaturList.length} Donatur*\n\n`;
             responseText += `*NOTE* = BAGI YANG MERASA ADA YANG SALAH HUBUNGIN JAMES/RISKI\n`;
-            responseText += `\u{1F525} *THANK YOU PARA DONATUR* \u{1F525}`;
+            responseText += `🔥 *THANK YOU PARA DONATUR* 🔥`;
 
             await sock.sendMessage(from, { text: responseText }, { quoted: msg });
         }
 
-        // Fitur #WLMCINFO
+        // Fitur /SETDONAME - Tambah nama donatur baru
+        if (command.startsWith('/SETDONAME')) {
+            const namaInput = content.replace(/\/setdoname/gi, '').trim();
+            if (!namaInput) {
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Format:* /setdoname [nama]\nContoh: */setdoname Fikri*`
+                }, { quoted: msg });
+            }
+
+            const tracker = getTracker();
+            if (!tracker.donatur) tracker.donatur = [];
+
+            // Cek nama sudah ada (case-insensitive)
+            const existing = tracker.donatur.find(d => d.nama.toLowerCase() === namaInput.toLowerCase());
+            if (existing) {
+                return sock.sendMessage(from, {
+                    text: `⚠️ Nama *"${existing.nama}"* sudah ada di list donatur dengan total *${formatRupiah(existing.total)}*.`
+                }, { quoted: msg });
+            }
+
+            tracker.donatur.push({ nama: namaInput, total: 0 });
+            saveTracker(tracker);
+
+            await sock.sendMessage(from, {
+                text: `✅ *${namaInput}* berhasil ditambahkan ke list donatur!\n💰 Total saat ini: *0*\n\n_Gunakan /setdonate ${namaInput} [jumlah] untuk tambah donasi._`
+            }, { quoted: msg });
+        }
+
+        // Fitur /SETDONATE - Tambah jumlah donasi (akumulatif)
+        if (command.startsWith('/SETDONATE')) {
+            const args = content.replace(/\/setdonate/gi, '').trim().split(/\s+/);
+            // Format: /setdonate [nama] [jumlah] — nama bisa lebih dari 1 kata, angka paling belakang
+            if (args.length < 2) {
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Format:* /setdonate [nama] [jumlah]\nContoh: */setdonate Juanda 100000*\n\n_5000 = 5K, 50000 = 50K, 500000 = 500K_`
+                }, { quoted: msg });
+            }
+
+            // Ambil angka dari argumen terakhir
+            const jumlahStr = args[args.length - 1];
+            const jumlah = parseInt(jumlahStr);
+            if (isNaN(jumlah) || jumlah <= 0) {
+                return sock.sendMessage(from, {
+                    text: `❌ Jumlah tidak valid. Masukkan angka. Contoh: */setdonate Juanda 100000*`
+                }, { quoted: msg });
+            }
+
+            // Nama = semua kata kecuali yang terakhir (angka)
+            const namaInput = args.slice(0, args.length - 1).join(' ');
+
+            const tracker = getTracker();
+            if (!tracker.donatur) tracker.donatur = [];
+
+            // Cari nama (case-insensitive)
+            const idx = tracker.donatur.findIndex(d => d.nama.toLowerCase() === namaInput.toLowerCase());
+            if (idx === -1) {
+                return sock.sendMessage(from, {
+                    text: `❌ Nama *"${namaInput}"* tidak ditemukan di list donatur.\n\n_Tambah dulu dengan: /setdoname ${namaInput}_`
+                }, { quoted: msg });
+            }
+
+            const totalLama = tracker.donatur[idx].total;
+            tracker.donatur[idx].total += jumlah;
+            const totalBaru = tracker.donatur[idx].total;
+            saveTracker(tracker);
+
+            await sock.sendMessage(from, {
+                text: `✅ *Donasi berhasil dicatat!*\n━━━━━━━━━━━━━━━━━━━━\n👤 *Nama:* ${tracker.donatur[idx].nama}\n➕ *Tambah:* ${formatRupiah(jumlah)}\n📊 *Sebelum:* ${formatRupiah(totalLama)}\n💰 *Total Sekarang:* *${formatRupiah(totalBaru)}*\n━━━━━━━━━━━━━━━━━━━━`
+            }, { quoted: msg });
+        }
         if (command === '#WLMCINFO') {
             const tracker = getTracker();
             const l = tracker.links || {};
@@ -961,6 +1027,8 @@ async function connectToWhatsApp() {
             menuText += `🕐 #TIME — Waktu saat ini\n\n`;
             menuText += `💰 *INFO WLMC:*\n`;
             menuText += `💎 #DONATUR — List top donatur\n`;
+            menuText += `➕ /setdoname [nama] — Tambah nama donatur baru\n`;
+            menuText += `💸 /setdonate [nama] [jumlah] — Catat donasi (akumulatif)\n`;
             menuText += `📋 #WLMCINFO — Info grup & discord\n`;
             menuText += `🌊 #BADAI — Aktifkan/nonaktifkan notif restart kota\n\n`;
             menuText += `🛡️ *ANTI-TOXIC:*\n`;
