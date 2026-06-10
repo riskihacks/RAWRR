@@ -20,9 +20,20 @@ const qrcode = require("qrcode-terminal");
 const { Sticker, StickerTypes } = require('wa-sticker-formatter');
 
 // Konfigurasi FiveM
-const SERVER_CODE = '237yxy';
-const FIVESTATS_SERVER_URL = `https://fivestats.io/api/servers/${SERVER_CODE}`;
-const FIVESTATS_PLAYERS_URL = `https://fivestats.io/api/servers/${SERVER_CODE}/players`;
+const DEFAULT_SERVER_CODE = '237yxy';
+
+function getServerCode() {
+    const tracker = getTracker();
+    return tracker.serverCode || DEFAULT_SERVER_CODE;
+}
+
+function getFiveStatsUrls() {
+    const code = getServerCode();
+    return {
+        server: `https://fivestats.io/api/servers/${code}`,
+        players: `https://fivestats.io/api/servers/${code}/players`
+    };
+}
 const TRACKER_FILE = './tracker.json';
 const OWNER_NUMBER = '6285831640918@s.whatsapp.net';
 
@@ -55,9 +66,10 @@ async function fetchServerData() {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://fivestats.io/'
         };
+        const urls = getFiveStatsUrls();
         const [serverRes, playersRes] = await Promise.all([
-            axios.get(FIVESTATS_SERVER_URL, { timeout: 10000, headers }),
-            axios.get(FIVESTATS_PLAYERS_URL, { timeout: 10000, headers })
+            axios.get(urls.server, { timeout: 10000, headers }),
+            axios.get(urls.players, { timeout: 10000, headers })
         ]);
 
         // Deduplicate player berdasarkan ID (fivestats kadang return duplikat)
@@ -145,7 +157,8 @@ async function connectToWhatsApp() {
                 message += `🆔 #KANTONG [ID] — Cari nama by ID\n`;
                 message += `📡 #TOPPING — Cek ping player\n`;
                 message += `🎲 #RANDOMID — Pick random player\n`;
-                message += `📈 #SERVERINFO — Status server\n\n`;
+                message += `📈 #SERVERINFO — Status server\n`;
+                message += `⚙️ #SETIDP [code] — Ganti server code FiveM\n\n`;
                 message += `🛠️ *TOOLS:*\n`;
                 message += `🔗 #HEX [link] — Konversi Steam ke Hex\n`;
                 message += `🖼️ #STICKER — Buat stiker dari foto\n`;
@@ -183,34 +196,51 @@ async function connectToWhatsApp() {
     }
 
     function startRestartNotifier(sock) {
+        // Track sesi kirim: key = "YYYY-MM-DD-HH" supaya tiap jam hanya kirim 1x
+        const sentSessions = new Set();
+
         async function checkRestart() {
             try {
-                const now = new Date();
-                const hour = now.getHours();
-                const minute = now.getMinutes();
+                // Selalu pakai WIB (Asia/Jakarta) agar tidak bergantung timezone server
+                const nowWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+                const hour   = nowWIB.getHours();
+                const minute = nowWIB.getMinutes();
+
+                // Hanya proses di jam 06 atau 18
+                if (hour !== 6 && hour !== 18) return;
+
+                // Buat key unik per hari + jam, misal "2026-06-10-06"
+                const dateKey = `${nowWIB.getFullYear()}-${String(nowWIB.getMonth()+1).padStart(2,'0')}-${String(nowWIB.getDate()).padStart(2,'0')}-${String(hour).padStart(2,'0')}`;
+
+                // Sudah dikirim di sesi ini? Skip
+                if (sentSessions.has(dateKey)) return;
+
+                // Hanya kirim di menit 0 s/d 2 (toleransi 2 menit kalau bot baru start)
+                if (minute > 2) return;
+
                 const tracker = getTracker();
-                
                 const restartGroups = tracker.restartGroups || [];
                 if (restartGroups.length === 0) return;
 
-                // Kirim pesan tepat jam 06:00 dan 18:00
-                if ((hour === 6 || hour === 18) && minute === 0) {
-                    const waktuLabel = hour === 6 ? 'Pagi (06:00)' : 'Sore (18:00)';
-                    const restartMessage =
-                        `🔄 *DAILY RESTART SERVER KOTA* 🔄\n` +
-                        `━━━━━━━━━━━━━━━━━━━━\n\n` +
-                        `⚠️ *INFO:* Server kota sedang melakukan daily restart ${waktuLabel}.\n\n` +
-                        `Silakan tunggu beberapa menit lalu relog kota kembali. Pastikan kendaraan dan barang bawaan sudah aman sebelum server kembali online!\n\n` +
-                        `━━━━━━━━━━━━━━━━━━━━\n` +
-                        `_WLMC Relog Setelah Server Online!_ 🏍️🔥`;
+                // Tandai sudah kirim SEBELUM loop, supaya tidak double-send
+                sentSessions.add(dateKey);
 
-                    for (const jid of restartGroups) {
-                        try {
-                            await sock.sendMessage(jid, { text: restartMessage });
-                            console.log(`[RESTART NOTIF] Sent to ${jid} at ${hour}:00`);
-                        } catch (err) {
-                            console.error(`[ERROR] Failed to send restart notif to ${jid}:`, err.message);
-                        }
+                const waktuLabel = hour === 6 ? 'Pagi (06:00)' : 'Sore (18:00)';
+                const restartMessage =
+                    `🔄 *DAILY RESTART SERVER KOTA* 🔄\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `⚠️ *INFO:* Server kota sedang melakukan daily restart ${waktuLabel}.\n\n` +
+                    `Silakan tunggu beberapa menit lalu relog kota kembali. Pastikan kendaraan dan barang bawaan sudah aman sebelum server kembali online!\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `_WLMC Relog Setelah Server Online!_ 🏍️🔥`;
+
+                console.log(`[RESTART NOTIF] Mengirim notif badai jam ${hour}:00 WIB ke ${restartGroups.length} grup...`);
+                for (const jid of restartGroups) {
+                    try {
+                        await sock.sendMessage(jid, { text: restartMessage });
+                        console.log(`[RESTART NOTIF] Sent to ${jid}`);
+                    } catch (err) {
+                        console.error(`[ERROR] Failed to send restart notif to ${jid}:`, err.message);
                     }
                 }
             } catch (err) {
@@ -218,8 +248,9 @@ async function connectToWhatsApp() {
             }
         }
 
-        // Jalankan setiap 60 detik (1 menit)
-        setInterval(checkRestart, 60 * 1000);
+        // Jalankan setiap 30 detik untuk lebih responsif
+        setInterval(checkRestart, 30 * 1000);
+        console.log('[RESTART NOTIF] Scheduler aktif — notif akan dikirim jam 06:00 & 18:00 WIB');
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -852,6 +883,63 @@ async function connectToWhatsApp() {
             }
         }
 
+        // Fitur #SETIDP - Ganti Server Code FiveM
+        if (command.startsWith('#SETIDP')) {
+            const newCode = content.replace(/#setidp/gi, '').trim();
+            if (!newCode) {
+                const currentCode = getServerCode();
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Format:* #setidp [server_code]\nContoh: *#setidp bak4pl*\n\n📡 *Server code aktif saat ini:* \`${currentCode}\`\n_Cek code di fivestats.io/servers_`
+                }, { quoted: msg });
+            }
+
+            // Validasi format server code (alphanumeric, panjang wajar)
+            if (!/^[a-zA-Z0-9]{4,10}$/.test(newCode)) {
+                return sock.sendMessage(from, {
+                    text: `❌ Server code tidak valid. Harus berupa huruf/angka, 4-10 karakter.\nContoh: *#setidp bak4pl*`
+                }, { quoted: msg });
+            }
+
+            // Test dulu apakah code valid
+            await sock.sendMessage(from, { text: `🔄 Mengecek server code *${newCode}*...` }, { quoted: msg });
+            try {
+                const testUrl = `https://fivestats.io/api/servers/${newCode}`;
+                const testRes = await axios.get(testUrl, {
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 Chrome/120',
+                        'Referer': 'https://fivestats.io/'
+                    }
+                });
+
+                if (!testRes.data || testRes.data.error) {
+                    return sock.sendMessage(from, {
+                        text: `❌ Server code *${newCode}* tidak ditemukan di fivestats.io. Pastikan code sudah benar.`
+                    }, { quoted: msg });
+                }
+
+                const oldCode = getServerCode();
+                const tracker = getTracker();
+                tracker.serverCode = newCode.toLowerCase();
+                saveTracker(tracker);
+
+                const serverName = testRes.data.hostname
+                    ? testRes.data.hostname.replace(/\^./g, '').substring(0, 40)
+                    : 'Unknown';
+
+                await sock.sendMessage(from, {
+                    text: `✅ *Server code berhasil diubah!*\n━━━━━━━━━━━━━━━━━━━━\n🔄 *Lama:* \`${oldCode}\`\n🆕 *Baru:* \`${newCode.toLowerCase()}\`\n🏠 *Server:* ${serverName}\n━━━━━━━━━━━━━━━━━━━━\n_Semua command (#WLMC, #SEARCH, dll) sekarang pakai server baru._`
+                }, { quoted: msg });
+
+                console.log(`[SETIDP] Server code changed: ${oldCode} → ${newCode.toLowerCase()}`);
+            } catch (err) {
+                console.error('[SETIDP] Error:', err.message);
+                await sock.sendMessage(from, {
+                    text: `❌ Gagal mengecek server code *${newCode}*. Pastikan code benar dan coba lagi.`
+                }, { quoted: msg });
+            }
+        }
+
         // Fitur #MENU
         if (command === '#MENU') {
             let menuText = `🏍️ *WLMC BOT - COMMAND MENU* 🏍️\n`;
@@ -864,7 +952,8 @@ async function connectToWhatsApp() {
             menuText += `🆔 #KANTONG [ID] — Cari nama by ID\n`;
             menuText += `📡 #TOPPING — Cek ping player\n`;
             menuText += `🎲 #RANDOMID — Pick random player\n`;
-            menuText += `📈 #SERVERINFO — Status server\n\n`;
+            menuText += `📈 #SERVERINFO — Status server\n`;
+            menuText += `⚙️ #SETIDP [code] — Ganti server code FiveM\n\n`;
             menuText += `🛠️ *TOOLS:*\n`;
             menuText += `🔗 #HEX [link] — Konversi Steam ke Hex\n`;
             menuText += `🖼️ #STICKER — Buat stiker dari foto\n`;
