@@ -484,6 +484,7 @@ async function connectToWhatsApp() {
             }, { quoted: msg });
         }
 
+        let userData = null;
         // Hanya jalankan proteksi/gate user jika pesan yang diketik adalah command (diawali / atau #)
         const isCommand = content && (content.startsWith('/') || content.startsWith('#'));
         if (isCommand) {
@@ -493,7 +494,7 @@ async function connectToWhatsApp() {
                     text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 25 menit biar James/Riski approve kamu ya!_ 🔥`
                 }, { quoted: msg });
             }
-            const userData = checkAndUpgradeUser(senderJid);
+            userData = checkAndUpgradeUser(senderJid);
             if (userData.status === 'pending') {
                 const sisaMs = PENDING_DURATION - (Date.now() - userData.registeredAt);
                 const sisaMenit = Math.floor(sisaMs / 60000);
@@ -1184,7 +1185,7 @@ async function connectToWhatsApp() {
         }
 
         // === OWNER ONLY COMMANDS ===
-        const isOwner = userData.status === 'owner';
+        const isOwner = userData && userData.status === 'owner';
 
         // /HAPUSUSER [nama] - Hapus user berdasarkan nama
         if (command.startsWith('/HAPUSUSER')) {
