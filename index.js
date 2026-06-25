@@ -62,7 +62,7 @@ function saveTracker(data) {
 
 // === USER MANAGEMENT ===
 const OWNER_NAME = 'riski/james';
-const PENDING_DURATION = 18 * 60 * 1000; // 18 menit dalam ms
+const PENDING_DURATION = 25 * 60 * 1000; // 25 menit dalam ms
 
 function getUserByJid(jid) {
     const tracker = getTracker();
@@ -468,7 +468,7 @@ async function connectToWhatsApp() {
             if (namaInput.toLowerCase() === OWNER_NAME.toLowerCase()) {
                 registerUser(senderJid, OWNER_NAME);
                 return sock.sendMessage(from, {
-                    text: `╔═══════════════════════════════════╗\n║  👑 OWW, OWNER NIH TERNYATA!     ║\n╚═══════════════════════════════════╝\n\nHeyy *${OWNER_NAME}*! Kamu langsung di-ACC dari sistem karena kamu *OWNER* bot ini cuyy! 🔥\n\nGak perlu nunggu 5 menit, langsung gaskeun semua fitur!\n\n👑 *Status:* OWNER - Full Access\n⚡ *Approved:* Langsung dari sistem\n\n_Welcome back king!_ 🏍️🔥`
+                    text: `╔═══════════════════════════════════╗\n║  👑 OWW, OWNER NIH TERNYATA!     ║\n╚═══════════════════════════════════╝\n\nHeyy *${OWNER_NAME}*! Kamu langsung di-ACC dari sistem karena kamu *OWNER* bot ini cuyy! 🔥\n\nGak perlu nunggu 25 menit, langsung gaskeun semua fitur!\n\n👑 *Status:* OWNER - Full Access\n⚡ *Approved:* Langsung dari sistem\n\n_Welcome back king!_ 🏍️🔥`
                 }, { quoted: msg });
             }
 
@@ -480,14 +480,14 @@ async function connectToWhatsApp() {
 
             registerUser(senderJid, namaInput);
             return sock.sendMessage(from, {
-                text: `╔══════════════════════════════╗\n║  ✅ DAFTAR BERHASIL, CUYY!  ║\n╚══════════════════════════════╝\n\nYooo *${namaInput}* berhasil masuk antrian! Sekarang tinggal tunggu bentar ya 🙏\n\n⏳ *Estimasi:* 18 menit\n👑 *Di-approve oleh:* James/Riski\n\nJangan buru-buru, sabar is power king, ditunggu ACC nya yaaa! 🔥🏍️\n\n_WLMC GACORRRRR_ 🔥`
+                text: `╔══════════════════════════════╗\n║  ✅ DAFTAR BERHASIL, CUYY!  ║\n╚══════════════════════════════╝\n\nYooo *${namaInput}* berhasil masuk antrian! Sekarang tinggal tunggu bentar ya 🙏\n\n⏳ *Estimasi:* 25 menit\n👑 *Di-approve oleh:* James/Riski\n\nJangan buru-buru, sabar is power king, ditunggu ACC nya yaaa! 🔥🏍️\n\n_WLMC GACORRRRR_ 🔥`
             }, { quoted: msg });
         }
 
         const rawUserData = getUserByJid(senderJid);
         if (!rawUserData) {
             return sock.sendMessage(from, {
-                text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 5 menit biar James/Riski approve kamu ya!_ 🔥`
+                text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 25 menit biar James/Riski approve kamu ya!_ 🔥`
             }, { quoted: msg });
         }
         const userData = checkAndUpgradeUser(senderJid);
