@@ -60,6 +60,81 @@ function saveTracker(data) {
     fs.writeFileSync(TRACKER_FILE, JSON.stringify(data, null, 2));
 }
 
+// === USER MANAGEMENT ===
+const OWNER_NAME = 'riski/james';
+const PENDING_DURATION = 5 * 60 * 1000; // 5 menit dalam ms
+
+function getUserByJid(jid) {
+    const tracker = getTracker();
+    return (tracker.users || {})[jid] || null;
+}
+
+function getUserByNama(nama) {
+    const tracker = getTracker();
+    const users = tracker.users || {};
+    const lower = nama.toLowerCase();
+    const entry = Object.entries(users).find(([, u]) => u.nama.toLowerCase() === lower);
+    return entry ? { jid: entry[0], ...entry[1] } : null;
+}
+
+function isNamaTaken(nama) {
+    const tracker = getTracker();
+    const lower = nama.toLowerCase();
+    return Object.values(tracker.users || {}).some(u => u.nama.toLowerCase() === lower);
+}
+
+function registerUser(jid, nama) {
+    const tracker = getTracker();
+    if (!tracker.users) tracker.users = {};
+    const isOwner = nama.toLowerCase() === OWNER_NAME.toLowerCase();
+    const now = Date.now();
+    tracker.users[jid] = {
+        nama,
+        registeredAt: now,
+        approvedAt: isOwner ? now : null,
+        status: isOwner ? 'owner' : 'pending'
+    };
+    saveTracker(tracker);
+    return tracker.users[jid];
+}
+
+function checkAndUpgradeUser(jid) {
+    const tracker = getTracker();
+    if (!tracker.users || !tracker.users[jid]) return null;
+    const user = tracker.users[jid];
+    if (user.status === 'pending' && (Date.now() - user.registeredAt) >= PENDING_DURATION) {
+        tracker.users[jid].status = 'approved';
+        tracker.users[jid].approvedAt = Date.now();
+        saveTracker(tracker);
+        return { ...tracker.users[jid], upgraded: true };
+    }
+    return user;
+}
+
+function deleteUserByNama(nama) {
+    const tracker = getTracker();
+    if (!tracker.users) return false;
+    const lower = nama.toLowerCase();
+    const jid = Object.keys(tracker.users).find(k => tracker.users[k].nama.toLowerCase() === lower);
+    if (!jid) return false;
+    delete tracker.users[jid];
+    saveTracker(tracker);
+    return true;
+}
+
+function approveUserByNama(nama) {
+    const tracker = getTracker();
+    if (!tracker.users) return null;
+    const lower = nama.toLowerCase();
+    const jid = Object.keys(tracker.users).find(k => tracker.users[k].nama.toLowerCase() === lower);
+    if (!jid) return null;
+    if (tracker.users[jid].status === 'owner') return tracker.users[jid];
+    tracker.users[jid].status = 'approved';
+    tracker.users[jid].approvedAt = Date.now();
+    saveTracker(tracker);
+    return tracker.users[jid];
+}
+
 // Format angka ke singkatan: 5000 -> 5K, 500000 -> 500K, 1500000 -> 1.5M
 function formatRupiah(amount) {
     if (amount >= 1000000) {
@@ -367,7 +442,65 @@ async function connectToWhatsApp() {
             }
         }
 
-        // Fitur #WLMC / #WL
+        const senderJid = msg.key.participant || from;
+        if (command.startsWith('/DAFTAR')) {
+            const namaInput = content.replace(/\/daftar/gi, '').trim();
+
+            if (!namaInput || namaInput.length < 3) {
+                return sock.sendMessage(from, {
+                    text: `╔══════════════════════════════╗\n║  ⚠️ FORMAT SALAH, BESTIE!   ║\n╚══════════════════════════════╝\n\nNama minimal *3 karakter* ya cuyy 😅\n\n➡️ Ketik: */daftar [nama kamu]*\nContoh: */daftar RiskiPenghancur*`
+                }, { quoted: msg });
+            }
+
+            if (namaInput.length > 30) {
+                return sock.sendMessage(from, {
+                    text: `⚠️ Nama terlalu panjang cuyy! Maksimal *30 karakter* ya king.`
+                }, { quoted: msg });
+            }
+
+            const existingUser = getUserByJid(senderJid);
+            if (existingUser) {
+                return sock.sendMessage(from, {
+                    text: `╔══════════════════════════════╗\n║  ℹ️ UDAH TERDAFTAR, KING!   ║\n╚══════════════════════════════╝\n\nKamu udah terdaftar dengan nama *"${existingUser.nama}"* cuyy!\n\n👤 *Status:* ${existingUser.status.toUpperCase()}\n_Gak perlu daftar lagi ya!_ 🔥`
+                }, { quoted: msg });
+            }
+
+            if (namaInput.toLowerCase() === OWNER_NAME.toLowerCase()) {
+                registerUser(senderJid, OWNER_NAME);
+                return sock.sendMessage(from, {
+                    text: `╔═══════════════════════════════════╗\n║  👑 OWW, OWNER NIH TERNYATA!     ║\n╚═══════════════════════════════════╝\n\nHeyy *${OWNER_NAME}*! Kamu langsung di-ACC dari sistem karena kamu *OWNER* bot ini cuyy! 🔥\n\nGak perlu nunggu 5 menit, langsung gaskeun semua fitur!\n\n👑 *Status:* OWNER - Full Access\n⚡ *Approved:* Langsung dari sistem\n\n_Welcome back king!_ 🏍️🔥`
+                }, { quoted: msg });
+            }
+
+            if (isNamaTaken(namaInput)) {
+                return sock.sendMessage(from, {
+                    text: `╔══════════════════════════════════╗\n║  ⚠️ NAMA UDAH KEPAKE, BESTIE!  ║\n╚══════════════════════════════════╝\n\nNama *"${namaInput}"* udah ada yang pake duluan di bot ini cuyy 😅\n\nCoba ganti nama lain ya:\n➡️ */daftar [nama baru kamu]*\n\n_Pilih nama yang unik biar kece!_ 🔥`
+                }, { quoted: msg });
+            }
+
+            registerUser(senderJid, namaInput);
+            return sock.sendMessage(from, {
+                text: `╔══════════════════════════════╗\n║  ✅ DAFTAR BERHASIL, CUYY!  ║\n╚══════════════════════════════╝\n\nYooo *${namaInput}* berhasil masuk antrian! Sekarang tinggal tunggu bentar ya 🙏\n\n⏳ *Estimasi:* 5 menit\n👑 *Di-approve oleh:* James/Riski\n\nJangan buru-buru, sabar is power king, ditunggu ACC nya yaaa! 🔥🏍️\n\n_WLMC GACORRRRR_ 🔥`
+            }, { quoted: msg });
+        }
+
+        const rawUserData = getUserByJid(senderJid);
+        if (!rawUserData) {
+            return sock.sendMessage(from, {
+                text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 5 menit biar James/Riski approve kamu ya!_ 🔥`
+            }, { quoted: msg });
+        }
+        const userData = checkAndUpgradeUser(senderJid);
+        if (userData.status === 'pending') {
+            const sisaMs = PENDING_DURATION - (Date.now() - userData.registeredAt);
+            const sisaMenit = Math.floor(sisaMs / 60000);
+            const sisaDetik = Math.floor((sisaMs % 60000) / 1000);
+            return sock.sendMessage(from, {
+                text: `╔══════════════════════════════╗\n║  ⏳ BELUM DI-ACC KING!      ║\n╚══════════════════════════════╝\n\nSabar cuyy, akunmu *${userData.nama}* lagi dalam proses approval sama *James/Riski* 🙏\n\n⏱️ *Sisa waktu:* ${sisaMenit} menit ${sisaDetik} detik lagi\n\nTunggu dikit lagi ya bestie, abis ini kamu udah bisa gaskeun semua fitur bot!\n\n_KING JAMES TUNGGU ACC_ 🔥👑`
+            }, { quoted: msg });
+        }
+
+
         if (command === '#WLMC' || command === '#WL') {
             const data = await fetchServerData();
             if (!data || !data.Data) return sock.sendMessage(from, { text: '❌ Gagal mengambil data dari server FiveM.' }, { quoted: msg });
@@ -1006,6 +1139,122 @@ async function connectToWhatsApp() {
             }
         }
 
+        // Fitur #LINKCONNECT
+        if (command === '#LINKCONNECT') {
+            const linkText =
+                `🌐 *CONNECT SERVER INDOPRIDE* 🌐\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `🖥️ *VIA WEBSITE:*\n` +
+                `🔗 https://server.indopride.id/\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `⌨️ *VIA DIRECT CONNECT (tekan F8):*\n\n` +
+                `🟢 \`connect kota.indopride.id\`\n` +
+                `🟢 \`connect kota2.indopride.id\`\n` +
+                `🟢 \`connect kota3.indopride.id\`\n` +
+                `🟢 \`connect kota4.indopride.id\`\n` +
+                `🟢 \`connect kota5.indopride.id\`\n` +
+                `🟢 \`connect kota6.indopride.id\`\n` +
+                `🟢 \`connect kota7.indopride.id\`\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `_Pilih server yang ping nya paling kenceng ya!_ 🏍️🔥`;
+            await sock.sendMessage(from, { text: linkText }, { quoted: msg });
+        }
+
+        // === OWNER ONLY COMMANDS ===
+        const isOwner = userData.status === 'owner';
+
+        // /HAPUSUSER [nama] - Hapus user berdasarkan nama
+        if (command.startsWith('/HAPUSUSER')) {
+            if (!isOwner) return sock.sendMessage(from, { text: `🚫 *Akses ditolak!* Command ini hanya untuk *riski/james* cuyy.` }, { quoted: msg });
+
+            const namaHapus = content.replace(/\/hapususer/gi, '').trim();
+            if (!namaHapus) {
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Format:* /hapususer [nama]\nContoh: */hapususer RiskiPenghancur*`
+                }, { quoted: msg });
+            }
+
+            if (namaHapus.toLowerCase() === OWNER_NAME.toLowerCase()) {
+                return sock.sendMessage(from, { text: `❌ Gak bisa hapus akun *riski/james* sendiri cuyy! 😅` }, { quoted: msg });
+            }
+
+            const deleted = deleteUserByNama(namaHapus);
+            if (!deleted) {
+                return sock.sendMessage(from, {
+                    text: `❌ User dengan nama *"${namaHapus}"* tidak ditemukan di database.`
+                }, { quoted: msg });
+            }
+
+            await sock.sendMessage(from, {
+                text: `✅ *User berhasil dihapus!*\n━━━━━━━━━━━━━━━━━━━━\n🗑️ *Nama:* ${namaHapus}\n\nMereka harus */daftar* ulang kalau mau akses bot lagi.\n_riski/james approved this removal_ 👑`
+            }, { quoted: msg });
+        }
+
+        // /LISTUSER - Tampilkan semua user terdaftar
+        if (command === '/LISTUSER') {
+            if (!isOwner) return sock.sendMessage(from, { text: `🚫 *Akses ditolak!* Command ini hanya untuk *riski/james* cuyy.` }, { quoted: msg });
+
+            const tracker = getTracker();
+            const users = tracker.users || {};
+            const entries = Object.entries(users);
+
+            if (entries.length === 0) {
+                return sock.sendMessage(from, { text: `📋 Belum ada user terdaftar di bot.` }, { quoted: msg });
+            }
+
+            const now = Date.now();
+            let ownerCount = 0, approvedCount = 0, pendingCount = 0;
+            let listText = `📋 *DAFTAR USER TERDAFTAR*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            entries.forEach(([, u]) => {
+                if (u.status === 'owner') {
+                    listText += `👑 *${u.nama}* — OWNER\n`;
+                    ownerCount++;
+                } else if (u.status === 'approved') {
+                    listText += `✅ *${u.nama}* — Approved\n`;
+                    approvedCount++;
+                } else {
+                    const sisaMs = PENDING_DURATION - (now - u.registeredAt);
+                    const sisaMenit = Math.max(0, Math.floor(sisaMs / 60000));
+                    const sisaDetik = Math.max(0, Math.floor((sisaMs % 60000) / 1000));
+                    listText += `⏳ *${u.nama}* — Pending (${sisaMenit}m ${sisaDetik}s lagi)\n`;
+                    pendingCount++;
+                }
+            });
+
+            listText += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+            listText += `📊 *Total: ${entries.length}* | 👑 ${ownerCount} Owner | ✅ ${approvedCount} Approved | ⏳ ${pendingCount} Pending`;
+
+            await sock.sendMessage(from, { text: listText }, { quoted: msg });
+        }
+
+        // /APPROVEUSER [nama] - Approve user secara manual
+        if (command.startsWith('/APPROVEUSER')) {
+            if (!isOwner) return sock.sendMessage(from, { text: `🚫 *Akses ditolak!* Command ini hanya untuk *riski/james* cuyy.` }, { quoted: msg });
+
+            const namaApprove = content.replace(/\/approveuser/gi, '').trim();
+            if (!namaApprove) {
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Format:* /approveuser [nama]\nContoh: */approveuser RiskiPenghancur*`
+                }, { quoted: msg });
+            }
+
+            const approvedUser = approveUserByNama(namaApprove);
+            if (!approvedUser) {
+                return sock.sendMessage(from, {
+                    text: `❌ User dengan nama *"${namaApprove}"* tidak ditemukan di database.`
+                }, { quoted: msg });
+            }
+
+            if (approvedUser.status === 'owner') {
+                return sock.sendMessage(from, { text: `ℹ️ *${namaApprove}* udah owner, gak perlu di-approve lagi cuyy.` }, { quoted: msg });
+            }
+
+            await sock.sendMessage(from, {
+                text: `✅ *User berhasil di-approve!*\n━━━━━━━━━━━━━━━━━━━━\n👤 *Nama:* ${approvedUser.nama}\n⚡ *Status:* APPROVED - Bisa pake bot sekarang!\n_Manual approved by riski/james_ 👑`
+            }, { quoted: msg });
+        }
+
         // Fitur #MENU
         if (command === '#MENU') {
             let menuText = `🏍️ *WLMC BOT - COMMAND MENU* 🏍️\n`;
@@ -1019,7 +1268,8 @@ async function connectToWhatsApp() {
             menuText += `📡 #TOPPING — Cek ping player\n`;
             menuText += `🎲 #RANDOMID — Pick random player\n`;
             menuText += `📈 #SERVERINFO — Status server\n`;
-            menuText += `⚙️ #SETIDP [code] — Ganti server code FiveM\n\n`;
+            menuText += `⚙️ #SETIDP [code] — Ganti server code FiveM\n`;
+            menuText += `🔌 #LINKCONNECT — Link connect server Indopride\n\n`;
             menuText += `🛠️ *TOOLS:*\n`;
             menuText += `🔗 #HEX [link] — Konversi Steam ke Hex\n`;
             menuText += `🖼️ #STICKER — Buat stiker dari foto\n`;
@@ -1036,6 +1286,12 @@ async function connectToWhatsApp() {
             menuText += `📝 #LISTBADWORD — Lihat daftar kata toxic\n`;
             menuText += `➕ #ADDBADWORD [kata] — Tambah kata toxic\n`;
             menuText += `➖ #REMOVEBADWORD [kata] — Hapus kata toxic custom\n\n`;
+            if (isOwner) {
+                menuText += `👑 *OWNER ONLY (riski/james):*\n`;
+                menuText += `📋 /listuser — Lihat semua user terdaftar\n`;
+                menuText += `✅ /approveuser [nama] — Approve user manual\n`;
+                menuText += `🗑️ /hapususer [nama] — Hapus user dari database\n\n`;
+            }
             menuText += `━━━━━━━━━━━━━━━━━━━━\n`;
             menuText += `_Bot by James/Riski_ 🔥`;
 

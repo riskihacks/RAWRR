@@ -4,3 +4,5 @@ auth_info_baileys/
 .env
 *.log
 botwa.zip
+tracker.json
+
