@@ -484,20 +484,24 @@ async function connectToWhatsApp() {
             }, { quoted: msg });
         }
 
-        const rawUserData = getUserByJid(senderJid);
-        if (!rawUserData) {
-            return sock.sendMessage(from, {
-                text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 25 menit biar James/Riski approve kamu ya!_ 🔥`
-            }, { quoted: msg });
-        }
-        const userData = checkAndUpgradeUser(senderJid);
-        if (userData.status === 'pending') {
-            const sisaMs = PENDING_DURATION - (Date.now() - userData.registeredAt);
-            const sisaMenit = Math.floor(sisaMs / 60000);
-            const sisaDetik = Math.floor((sisaMs % 60000) / 1000);
-            return sock.sendMessage(from, {
-                text: `╔══════════════════════════════╗\n║  ⏳ BELUM DI-ACC KING!      ║\n╚══════════════════════════════╝\n\nSabar cuyy, akunmu *${userData.nama}* lagi dalam proses approval sama *James/Riski* 🙏\n\n⏱️ *Sisa waktu:* ${sisaMenit} menit ${sisaDetik} detik lagi\n\nTunggu dikit lagi ya bestie, abis ini kamu udah bisa gaskeun semua fitur bot!\n\n_KING JAMES TUNGGU ACC_ 🔥👑`
-            }, { quoted: msg });
+        // Hanya jalankan proteksi/gate user jika pesan yang diketik adalah command (diawali / atau #)
+        const isCommand = content && (content.startsWith('/') || content.startsWith('#'));
+        if (isCommand) {
+            const rawUserData = getUserByJid(senderJid);
+            if (!rawUserData) {
+                return sock.sendMessage(from, {
+                    text: `╔══════════════════════════════╗\n║  ⚠️ AKSES DITOLAK, KING!    ║\n╚══════════════════════════════╝\n\nMaaf cuy, kamu belum terdata di bot *James/Riski* jadi gak bisa akses fitur apapun dulu ye 🫡\n\nCara daftar gampang banget:\n➡️ Ketik: */daftar [nama kamu]*\n\nContoh:\n*/daftar RiskiPenghancur*\n\n_Setelah daftar, tunggu 25 menit biar James/Riski approve kamu ya!_ 🔥`
+                }, { quoted: msg });
+            }
+            const userData = checkAndUpgradeUser(senderJid);
+            if (userData.status === 'pending') {
+                const sisaMs = PENDING_DURATION - (Date.now() - userData.registeredAt);
+                const sisaMenit = Math.floor(sisaMs / 60000);
+                const sisaDetik = Math.floor((sisaMs % 60000) / 1000);
+                return sock.sendMessage(from, {
+                    text: `╔══════════════════════════════╗\n║  ⏳ BELUM DI-ACC KING!      ║\n╚══════════════════════════════╝\n\nSabar cuyy, akunmu *${userData.nama}* lagi dalam proses approval sama *James/Riski* 🙏\n\n⏱️ *Sisa waktu:* ${sisaMenit} menit ${sisaDetik} detik lagi\n\nTunggu dikit lagi ya bestie, abis ini kamu udah bisa gaskeun semua fitur bot!\n\n_KING JAMES TUNGGU ACC_ 🔥👑`
+                }, { quoted: msg });
+            }
         }
 
 
