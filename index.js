@@ -507,22 +507,41 @@ async function connectToWhatsApp() {
 
             const players = data.Data.players || [];
             const wlmcPlayers = players.filter(p => p.name.toUpperCase().includes('WLMC'));
+            const totalOnline = data.Data.clients || 0;
+            const maxSlot = data.Data.sv_maxclients || '?';
+            const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 
-            let responseText = `\u{1F3AE} *INDOPRIDE ROLEPLAY - BOT BY JAMES/RISKI*\n`;
-            responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            let responseText = '';
+            responseText += `╔══════════════════════════╗\n`;
+            responseText += `║  🏍️  *WLMC TRACKER*  🏍️  ║\n`;
+            responseText += `║  _IndoPride Roleplay_      ║\n`;
+            responseText += `╚══════════════════════════╝\n\n`;
 
             if (wlmcPlayers.length > 0) {
-                responseText += `\u{1F465} *LIST PLAYER WLMC (${wlmcPlayers.length} ONLINE):*\n`;
+                responseText += `👥 *MEMBER WLMC ONLINE — ${wlmcPlayers.length} ORANG*\n`;
+                responseText += `▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔\n`;
                 wlmcPlayers.forEach((p, index) => {
-                    responseText += `${index + 1}. \u{1F194} [${p.id}] *${p.name}* (\u{26A1} ${p.ping}ms)\n`;
+                    const pingIcon = p.ping <= 50 ? '🟢' : p.ping <= 120 ? '🟡' : '🔴';
+                    const num = String(index + 1).padStart(2, '0');
+                    responseText += `*${num}.* 🎮 *${p.name}*\n`;
+                    responseText += `      🪪 ID: \`${p.id}\`  ${pingIcon} Ping: *${p.ping}ms*\n`;
+                    responseText += `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n`;
                 });
             } else {
-                responseText += `\u{274C} *Tidak ada pemain WLMC yang online.*\n`;
+                responseText += `▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔\n`;
+                responseText += `😴 *Belum ada member WLMC yang online.*\n`;
+                responseText += `    Kapan lagi masuk kota, King? 🏙️\n`;
+                responseText += `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n`;
             }
 
-            responseText += `\n\u{1F4CA} *TOTAL ONLINE:* ${data.Data.clients} Players\n`;
-            responseText += `━━━━━━━━━━━━━━━━━━━━\n`;
-            responseText += `_WLMC GACORRRRRRRRRRRRRRRRRRRR_`;
+            responseText += `\n📊 *STATUS SERVER*\n`;
+            responseText += `▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔\n`;
+            responseText += `🌐 Total Online : *${totalOnline} / ${maxSlot} Players*\n`;
+            responseText += `🏍️ WLMC Online  : *${wlmcPlayers.length} Orang*\n`;
+            responseText += `🕐 Update       : *${now} WIB*\n`;
+            responseText += `▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔\n`;
+            responseText += `🔥 _WLMC GACOR TERUS, KING!_ 🔥\n`;
+            responseText += `_Bot by James/Riski_`;
 
             await sock.sendMessage(from, { text: responseText }, { quoted: msg });
         }
