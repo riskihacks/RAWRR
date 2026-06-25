@@ -62,7 +62,7 @@ function saveTracker(data) {
 
 // === USER MANAGEMENT ===
 const OWNER_NAME = 'riski/james';
-const PENDING_DURATION = 5 * 60 * 1000; // 5 menit dalam ms
+const PENDING_DURATION = 18 * 60 * 1000; // 18 menit dalam ms
 
 function getUserByJid(jid) {
     const tracker = getTracker();
@@ -480,7 +480,7 @@ async function connectToWhatsApp() {
 
             registerUser(senderJid, namaInput);
             return sock.sendMessage(from, {
-                text: `╔══════════════════════════════╗\n║  ✅ DAFTAR BERHASIL, CUYY!  ║\n╚══════════════════════════════╝\n\nYooo *${namaInput}* berhasil masuk antrian! Sekarang tinggal tunggu bentar ya 🙏\n\n⏳ *Estimasi:* 5 menit\n👑 *Di-approve oleh:* James/Riski\n\nJangan buru-buru, sabar is power king, ditunggu ACC nya yaaa! 🔥🏍️\n\n_WLMC GACORRRRR_ 🔥`
+                text: `╔══════════════════════════════╗\n║  ✅ DAFTAR BERHASIL, CUYY!  ║\n╚══════════════════════════════╝\n\nYooo *${namaInput}* berhasil masuk antrian! Sekarang tinggal tunggu bentar ya 🙏\n\n⏳ *Estimasi:* 18 menit\n👑 *Di-approve oleh:* James/Riski\n\nJangan buru-buru, sabar is power king, ditunggu ACC nya yaaa! 🔥🏍️\n\n_WLMC GACORRRRR_ 🔥`
             }, { quoted: msg });
         }
 
